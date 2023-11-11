@@ -32,24 +32,37 @@ const client = new MongoClient(uri, {
     try {
       // Connect the client to the server	(optional starting in v4.7)
       await client.connect();
+
+      const menuCollections = client.db('bisstroDB').collection('menu');
+
+        
+
+      app.get('/menu', async(req, res)=> {
+        const data = await menuCollections.find({}).toArray();
+        res.send(data)
+      })
+
+            
+
+
+
+
+
+
       // Send a ping to confirm a successful connection
       await client.db("admin").command({ ping: 1 });
       console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
       // Ensures that the client will close when you finish/error
-      await client.close();
+    //   await client.close();
     }
   }
   run().catch(console.dir);
 
 
-
-  
-
 app.get('/', (req, res)=> {
     res.send(`<h1 style="color: red; font-size: 2rem; display: flex; align-items: center; justify-content: center; height: 100vh">bisstro boss server is running</h1>`)
 })
-
 
 
 app.listen(port, ()=> {

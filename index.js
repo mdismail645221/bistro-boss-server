@@ -37,6 +37,7 @@ async function run() {
 
     const menuCollections = client.db("bisstroDB").collection("menu");
     const reviewsCollections = client.db("bisstroDB").collection("review");
+    const cartCollection = client.db("cart").collection("cart");
 
     // reviews get API route
     app.get("/review", async (req, res) => {
@@ -49,11 +50,21 @@ async function run() {
       const data = await menuCollections.find({}).toArray();
       res.send(data);
     });
+
+
+    app.post('/cart', async (req, res)=> {
+      const body = req.body;
+      const result = await cartCollection.insertOne(body);
+      res.send(result)
+    })
+
+
   } finally {
     // Ensures that the client will close when you finish/error
-    //   await client.close();
+    // Await client.close();
   }
 }
+
 run().catch(console.dir);
 
 app.get("/", (req, res) => {

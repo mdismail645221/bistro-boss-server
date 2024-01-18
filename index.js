@@ -11,7 +11,7 @@ app.use(express.json());
 // pass
 // OzOBj7vXvKuIaxoo
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yzc4fwf.mongodb.net/?retryWrites=true&w=majority`;
 console.log({ uri });
 
@@ -52,11 +52,34 @@ async function run() {
     });
 
 
+//  My cart collection all method 
+
+    app.get('/cart', async(req, res)=> {
+      const email = req.query?.email;
+      if(!email){
+        res.send([])
+      }
+      const query = {email: email};
+      const result = await cartCollection.find(query).toArray();
+      res.send(result)
+    })
+
     app.post('/cart', async (req, res)=> {
       const body = req.body;
       const result = await cartCollection.insertOne(body);
       res.send(result)
     })
+
+    app.delete('/cart/:id', async(req, res)=> {
+      const cartId = req.params?.id;
+      const filter = {_id: new ObjectId(cartId)};
+      // console.log({deletedCartId : cartId});
+      const result = await cartCollection.deleteOne(filter);
+      res.send(result)
+    })
+
+
+
 
 
   } finally {

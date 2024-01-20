@@ -35,9 +35,31 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
 
+    const usersCollections = client.db("bisstroBD").collection('users');
     const menuCollections = client.db("bisstroDB").collection("menu");
     const reviewsCollections = client.db("bisstroDB").collection("review");
     const cartCollection = client.db("cart").collection("cart");
+
+
+
+
+
+  // all users api method 
+
+  app.get('/users', async(req, res)=> {
+    const users = await usersCollections.find({}).toArray();
+    res.send(users)
+  })
+
+  app.post('/users', async(req, res)=> {
+    const body = req?.body;
+    const result = await usersCollections.insertOne(body);
+    res.send(result)
+  })
+
+
+  
+
 
     // reviews get API route
     app.get("/review", async (req, res) => {
@@ -50,6 +72,10 @@ async function run() {
       const data = await menuCollections.find({}).toArray();
       res.send(data);
     });
+
+
+
+
 
 
 //  My cart collection all method 

@@ -35,30 +35,61 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
 
-    const usersCollections = client.db("bisstroBD").collection('users');
+    const usersCollections = client.db("bisstroBD").collection("users");
     const menuCollections = client.db("bisstroDB").collection("menu");
     const reviewsCollections = client.db("bisstroDB").collection("review");
     const cartCollection = client.db("cart").collection("cart");
 
+    // all users api method
+
+    app.get("/users", async (req, res) => {
+      const users = await usersCollections.find().toArray();
+      res.send(users);
+    });
+
+    app.post("/users", async (req, res) => {
+      const body = req?.body;
+      const saveInfo = {
+        name: body.displayName,
+        email: body?.email,
+        uid: body?.uid,
+        photo: body?.photoURL,
+      };
+      console.log(saveInfo);
+
+      const query = { email: body?.email };
+      const existsUser = await usersCollections.findOne(query);
+      console.log({ isexist: existsUser });
+      if (existsUser) {
+        res.send({ message: `User Already Exists Now` });
+      } else {
+        const result = await usersCollections.insertOne(saveInfo);
+        res.send(result);
+      }
+    });
+
+    app.delete('/users/:id', async(req, res)=> {
+        const emailId = req?.params?.id; 
+        const filter = {_id: new ObjectId(emailId)};
+        const result = await usersCollections.deleteOne(filter);
+        res.send(result)
+    })
+
+    // admin role update mehtod API
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params?.id;
+      // console.log(id)
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollections.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
 
-
-
-  // all users api method 
-
-  app.get('/users', async(req, res)=> {
-    const users = await usersCollections.find({}).toArray();
-    res.send(users)
-  })
-
-  app.post('/users', async(req, res)=> {
-    const body = req?.body;
-    const result = await usersCollections.insertOne(body);
-    res.send(result)
-  })
-
-
-  
 
 
     // reviews get API route
@@ -73,41 +104,31 @@ async function run() {
       res.send(data);
     });
 
+    //  My cart collection all method
 
-
-
-
-
-//  My cart collection all method 
-
-    app.get('/cart', async(req, res)=> {
+    app.get("/cart", async (req, res) => {
       const email = req.query?.email;
-      if(!email){
-        res.send([])
+      if (!email) {
+        res.send([]);
       }
-      const query = {email: email};
+      const query = { email: email };
       const result = await cartCollection.find(query).toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    app.post('/cart', async (req, res)=> {
+    app.post("/cart", async (req, res) => {
       const body = req.body;
       const result = await cartCollection.insertOne(body);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    app.delete('/cart/:id', async(req, res)=> {
+    app.delete("/cart/:id", async (req, res) => {
       const cartId = req.params?.id;
-      const filter = {_id: new ObjectId(cartId)};
+      const filter = { _id: new ObjectId(cartId) };
       // console.log({deletedCartId : cartId});
       const result = await cartCollection.deleteOne(filter);
-      res.send(result)
-    })
-
-
-
-
-
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // Await client.close();

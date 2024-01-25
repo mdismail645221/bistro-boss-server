@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+var jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 require("dotenv").config();
@@ -10,6 +11,25 @@ app.use(express.json());
 
 // pass
 // OzOBj7vXvKuIaxoo
+
+let verifyJWT = (req, res, next) => {
+  const authorization = req.headers?.authorization;
+  if(!authorization){
+    return res.status(401).send({error: true, message: "unAuthorized Access"})
+  }
+  const token = authorization.split(' ')[1]
+  // console.log({token: token})
+  jwt.verify(token, process.env.JWT_TOKEN, (error, decoded)=> {
+    if(error){
+      return res.status(401).send({error: true, message: "unAuthorized Access"})
+    }
+    req.decoded = decoded;
+    next()
+  })
+   
+}
+
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yzc4fwf.mongodb.net/?retryWrites=true&w=majority`;
@@ -40,10 +60,51 @@ async function run() {
     const reviewsCollections = client.db("bisstroDB").collection("review");
     const cartCollection = client.db("cart").collection("cart");
 
+    // isAdmin middle ware method 
+    const isAdmin = async(req, res, next) => {
+        const email = req.decoded?.email;
+        const query = {email: email};
+        const result =  await usersCollections.findOne(query);
+        if(result?.role !== 'admin'){
+          res.status(403).send({error: true, meessage: "forbidden access"})
+        }
+        next()
+    }
+
+    // jwt sign in method 
+    app.post('/jwt', (req, res)=> {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_TOKEN, { expiresIn: '2hr'});
+      res.send(token)
+    })
+
     // all users api method
 
-    app.get("/users", async (req, res) => {
+       //user admin verified method api 
+    app.get('/users/admin/:email', verifyJWT, async(req, res)=> {
+      const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+
+      const query = { email: email };
+      const user = await usersCollections.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+
+      console.log(admin)
+      res.send({ admin });
+    })
+
+
+
+    app.get("/users", verifyJWT, async (req, res) => {
+      console.log("click")
       const users = await usersCollections.find().toArray();
+      console.log("users", users)
       res.send(users);
     });
 
@@ -55,11 +116,11 @@ async function run() {
         uid: body?.uid,
         photo: body?.photoURL,
       };
-      console.log(saveInfo);
+      // console.log(saveInfo);
 
       const query = { email: body?.email };
       const existsUser = await usersCollections.findOne(query);
-      console.log({ isexist: existsUser });
+      // console.log({ isexist: existsUser });
       if (existsUser) {
         res.send({ message: `User Already Exists Now` });
       } else {
@@ -74,6 +135,9 @@ async function run() {
         const result = await usersCollections.deleteOne(filter);
         res.send(result)
     })
+
+
+
 
     // admin role update mehtod API
     app.patch("/users/admin/:id", async (req, res) => {
@@ -91,7 +155,6 @@ async function run() {
 
 
 
-
     // reviews get API route
     app.get("/review", async (req, res) => {
       const data = await reviewsCollections.find({}).toArray();
@@ -105,18 +168,24 @@ async function run() {
     });
 
     //  My cart collection all method
-
-    app.get("/cart", async (req, res) => {
+    app.get("/cart", verifyJWT, async (req, res) => {
       const email = req.query?.email;
       if (!email) {
         res.send([]);
       }
       const query = { email: email };
+
+      const decodedEmail = req.decoded.email; 
+      // console.log({decodedEmail: decodedEmail, email: query.email})
+      if(query.email !== decodedEmail){
+        return res.status(401).send({error: true, message: "unAuthorized Access"})
+      }
+
       const result = await cartCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.post("/cart", async (req, res) => {
+    app.post("/cart", async (req,  res) => {
       const body = req.body;
       const result = await cartCollection.insertOne(body);
       res.send(result);
@@ -136,6 +205,8 @@ async function run() {
 }
 
 run().catch(console.dir);
+
+
 
 app.get("/", (req, res) => {
   res.send(

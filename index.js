@@ -167,6 +167,16 @@ async function run() {
       res.send(data);
     });
 
+    // menu item post method 
+    app.post('/menu', async(req,res)=>{
+      const body = req.body;
+      const result = await menuCollections.insertOne(body);
+      res.send(result)
+    })
+
+
+
+
     //  My cart collection all method
     app.get("/cart", verifyJWT, async (req, res) => {
       const email = req.query?.email;

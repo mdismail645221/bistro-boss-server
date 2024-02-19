@@ -5,6 +5,8 @@ const port = process.env.PORT || 5000;
 const cors = require("cors");
 require("dotenv").config();
 
+const stripe = require("stripe")(process.env.STRIPE_PAYMENT_KEY)
+
 // Middle ware
 app.use(cors());
 app.use(express.json());
@@ -13,7 +15,8 @@ app.use(express.json());
 // OzOBj7vXvKuIaxoo
 
 let verifyJWT = (req, res, next) => {
-  const authorization = req.headers?.authorization;
+  console.log(req?.headers)
+  const authorization = req.headers?.authorization; 
   if(!authorization){
     return res.status(401).send({error: true, message: "unAuthorized Access"})
   }
@@ -55,7 +58,7 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
 
-    const usersCollections = client.db("bisstroBD").collection("users");
+    const usersCollections = client.db("bisstroDB").collection("users");
     const menuCollections = client.db("bisstroDB").collection("menu");
     const reviewsCollections = client.db("bisstroDB").collection("review");
     const cartCollection = client.db("cart").collection("cart");
@@ -65,6 +68,7 @@ async function run() {
         const email = req.decoded?.email;
         const query = {email: email};
         const result =  await usersCollections.findOne(query);
+        
         if(result?.role !== 'admin'){
           res.status(403).send({error: true, meessage: "forbidden access"})
         }
@@ -167,10 +171,22 @@ async function run() {
       res.send(data);
     });
 
+
     // menu item post method 
-    app.post('/menu', async(req,res)=>{
+    app.post('/menu',verifyJWT, isAdmin, async(req,res)=>{
       const body = req.body;
       const result = await menuCollections.insertOne(body);
+      res.send(result)
+    })
+
+
+
+    // menu delete menu 
+    app.delete('/menu/:id', verifyJWT, isAdmin,  async(req, res)=> {
+      const id = req.params?.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollections.deleteOne(query);
+      console.log({result})
       res.send(result)
     })
 
@@ -208,6 +224,27 @@ async function run() {
       const result = await cartCollection.deleteOne(filter);
       res.send(result);
     });
+
+
+    app.post('/payment-method-intent', async(req, res)=> {
+      const {price } = req?.body;
+      const amount = price * 100;
+      // payment intent function 
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        "payment_method_types": [
+          "card",
+          "link"
+        ],
+        
+      })
+    })
+
+
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // Await client.close();
